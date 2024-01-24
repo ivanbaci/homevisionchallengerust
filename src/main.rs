@@ -10,9 +10,8 @@ use std::path::Path;
 struct House {
     id: u128,
     address: String,
-    homeowner: String,
-    price: u128,
-    photoURL: String,
+    #[serde(rename = "photoURL")]
+    photo_url: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -21,7 +20,7 @@ struct ApiResponse {
 }
 
 async fn download_photo(house: &House) -> Result<(), Box<dyn std::error::Error>> {
-    let response = reqwest::get(&house.photoURL).await?;
+    let response = reqwest::get(&house.photo_url).await?;
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let file_path = Path::new(&manifest_dir)
         .join("photos")
