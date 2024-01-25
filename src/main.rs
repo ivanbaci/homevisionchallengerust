@@ -1,12 +1,12 @@
-use rayon::prelude::*;
 use reqwest;
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use tokio;
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 struct House {
     id: u128,
     address: String,
@@ -19,8 +19,8 @@ struct ApiResponse {
     houses: Vec<House>,
 }
 
-async fn download_photo(house: &House) -> Result<(), Box<dyn std::error::Error>> {
-    let response = reqwest::get(&house.photo_url).await?;
+async fn download_photo(house: House) -> Result<(), Box<dyn std::error::Error>> {
+    let response = reqwest::get(house.photo_url).await?;
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let file_path = Path::new(&manifest_dir)
         .join("photos")
@@ -39,15 +39,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = "http://app-homevision-staging.herokuapp.com/api_project/houses";
 
     let response = reqwest::get(url).await?;
-
     let data = response.json::<ApiResponse>().await?;
 
-    data.houses.par_iter().for_each(|house| {
-        tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(download_photo(house))
-            .unwrap();
-    });
+    let mut handles = Vec::new();
 
+    for house in data.houses {
+        let house_clone = house.clone();
+        let handle = tokio::spawn(async move {
+            download_photo(house_clone).await.unwrap();
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.await?;
+    }
     Ok(())
 }
