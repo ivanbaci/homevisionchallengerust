@@ -34,6 +34,23 @@ async fn download_photo(house: House) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
+async fn fetch_houses(url: String) -> Result<ApiResponse, Box<dyn std::error::Error>> {
+    loop {
+        let response = reqwest::get(&url).await?;
+
+        if response.status().is_success() {
+            let data = response.json::<ApiResponse>().await?;
+            return Ok(data);
+        } else {
+            eprintln!(
+                "Error getting data (Status: {}), retrying...",
+                response.status()
+            );
+            tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
@@ -47,8 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let base_url = "http://app-homevision-staging.herokuapp.com/api_project/houses";
     let url = format!("{}?page={}&perPage={}", base_url, page, per_page);
 
-    let response = reqwest::get(url).await?;
-    let data = response.json::<ApiResponse>().await?;
+    let data = fetch_houses(url).await?;
 
     let mut handles = Vec::new();
 
