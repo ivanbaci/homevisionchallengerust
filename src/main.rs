@@ -36,7 +36,16 @@ async fn download_photo(house: House) -> Result<(), Box<dyn std::error::Error>> 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let url = "http://app-homevision-staging.herokuapp.com/api_project/houses";
+    let args: Vec<String> = env::args().collect();
+    if args.len() != 3 {
+        eprintln!("Uso: {} <page> <per_page>", args[0]);
+        return Ok(());
+    }
+
+    let page = &args[1];
+    let per_page = &args[2];
+    let base_url = "http://app-homevision-staging.herokuapp.com/api_project/houses";
+    let url = format!("{}?page={}&perPage={}", base_url, page, per_page);
 
     let response = reqwest::get(url).await?;
     let data = response.json::<ApiResponse>().await?;
